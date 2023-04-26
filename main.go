@@ -32,18 +32,7 @@ func runFile(path string) {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
-	fileInfo, err := file.Stat()
-	if err != nil {
-		fmt.Println("Can't get File information.")
-		os.Exit(1)
-	}
-
-	if fileInfo.Size() == 0 {
-		fmt.Println("File is empty.")
-		os.Exit(1)
-	}
-	
+	defer file.Close()
 	
 	reader := bufio.NewReader(file)
 	buffer := make([]byte, BUFFER_SIZE)
