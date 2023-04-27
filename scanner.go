@@ -28,87 +28,103 @@ func (s *scanner) Scan() Tokens {
 	for !s.isAtEnd() {
 		s.scanOne()
 	}
+
+	return s.tokens
 }
+
 func (s *scanner) scanOne() {
 	switch c := s.peekAndForward(); c {
 
 	// Single char lexemes.
-	case "(":
-		addToken(LEFT_PAREN, c)
+	case '(':
+		s.addToken(LEFT_PAREN, string(c))
 		break
-	case ")":
-		addToken(RIGHT_PAREN, c)
+	case ')':
+		s.addToken(RIGHT_PAREN, string(c))
 		break
-	case "{":
-		addToken(LEFT_BRACE, c)
+	case '{':
+		s.addToken(LEFT_BRACE, string(c))
 		break
-	case "}":
-		addToken(RIGHT_BRACE, c)
+	case '}':
+		s.addToken(RIGHT_BRACE, string(c))
 		break
-	case ",":
-		addToken(COMMA, c)
+	case ',':
+		s.addToken(COMMA, string(c))
 		break
-	case ".":
-		addToken(DOT, c)
+	case '.':
+		s.addToken(DOT, string(c))
 		break
-	case "-":
-		addToken(MINUS, c)
+	case '-':
+		s.addToken(MINUS, string(c))
 		break
-	case "+":
-		addToken(PLUS, c)
+	case '+':
+		s.addToken(PLUS, string(c))
 		break
-	case ";":
-		addToken(SEMICOLON, c)
+	case ';':
+		s.addToken(SEMICOLON, string(c))
 		break
-	case "*":
-		addToken(STAR, c)
+	case '*':
+		s.addToken(STAR, string(c))
 		break
-	case "#":
-		addToken(HASH, c)
+	// # is used for commenting. In below, we're just basically skipping every character
+	// until the end of current line.
+	case '#':
+		for c := s.peekAndForward(); c != '\n' || !s.isAtEnd(); {
+		}
 		break
 
 	// May or may not be single char lexemes.
-	case "!":
-		if yes := doesMatchNext("="); yes {
-			addToken(BANG_EQUAL, s.constructLex())
+	case '!':
+		if yes := s.doesMatchNext('='); yes {
+			s.addToken(BANG_EQUAL, s.constructLex())
 			break
 		}
-		addToken(BANG, c)
+		s.addToken(BANG, string(c))
 		break
-	case "=":
-		if yes := doesMatchNext("="); yes {
-			addToken(EQUAL_EQUAL, s.constructLex())
+	case '=':
+		if yes := s.doesMatchNext('='); yes {
+			s.addToken(EQUAL_EQUAL, s.constructLex())
 			break
 		}
-		addToken(EQUAL, c)
+		s.addToken(EQUAL, string(c))
 		break
 
-	case ">":
-		if yes := doesMatchNext("="); yes {
-			addToken(GREAT_EQUAL, s.constructLex())
+	case '>':
+		if yes := s.doesMatchNext('='); yes {
+			s.addToken(GREATER_EQUAL, s.constructLex())
 			break
 		}
-		addToken(GREAT, c)
+		s.addToken(GREATER, string(c))
 
-	case "<":
-		if yes := doesMatchNext("="); yes {
-			addToken(LESS_EQUAL, s.constructLex())
+	case '<':
+		if yes := s.doesMatchNext('='); yes {
+			s.addToken(LESS_EQUAL, s.constructLex())
 			break
 		}
-		addToken(LESS, c)
+		s.addToken(LESS, string(c))
 
-	case "\x00":
-		addToken(EOF, c)
+	case ' ':
+		break
+	case '\t':
+		break
+	case '\r':
+		break
+	case '\n':
+		s.line++
+		break
+
+	case '\x00':
+		s.addToken(EOF, string(c))
 		break
 	default:
-		fmt.Println("Unexpected char")
+		fmt.Println("Unexpected char at line: ", s.line)
 		break
 	}
 }
 
 // isAtEnd checks if the offset has reached
 // the end of file string.
-func (s *Scanner) isAtEnd() bool {
+func (s *scanner) isAtEnd() bool {
 	return s.current >= s.size
 }
 
@@ -118,23 +134,23 @@ func (s *scanner) peekAndForward() rune {
 	if s.isAtEnd() {
 		return '\x00'
 	}
-	c := s.source[s.current]
+	temp := s.current
 	s.current++
 
-	return c
+	return rune(s.source[temp]) 
 }
 
 // peek returns the next unconsumed char.
 // It does not increment the offset. Just peeks.
 func (s *scanner) peek() rune {
 	if s.isAtEnd() {
-		return "\x00"
+		return '\x00'
 	}
-	return s.source[s.current]
+	return rune(s.source[s.current])
 }
 
 func (s *scanner) constructLex() string {
-	return s.source[start : current+1]
+	return s.source[s.start : s.current+1]
 
 }
 
@@ -142,7 +158,7 @@ func (s *scanner) constructLex() string {
 // char in source, checkes if it equals with
 // expected char. It only increments offset by one
 // if the check is true.
-func doesMatchNext(expected rune) bool {
+func (s *scanner) doesMatchNext(expected rune) bool {
 	if s.isAtEnd() {
 		return false
 	}

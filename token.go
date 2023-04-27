@@ -62,7 +62,7 @@ type Token struct {
 	line       int
 	runtimeObj RuntimeObject
 }
-type Tokens []Token
+type Tokens []*Token
 
 func NewToken(t TokenType, l string, line int, r RuntimeObject) *Token {
 	return &Token{
