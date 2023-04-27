@@ -1,3 +1,4 @@
+/* to be documented */
 package main
 
 type TokenType int
@@ -15,6 +16,7 @@ const (
 	SEMICOLON
 	SLASH
 	STAR
+	HASH
 
 	// Maybe one, maybe two token types.
 	BANG

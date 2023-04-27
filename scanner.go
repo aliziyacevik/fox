@@ -26,21 +26,11 @@ func NewScanner(source string) Scanner {
 
 func (s *scanner) Scan() Tokens {
 	for !s.isAtEnd() {
-		s.forward()
 		s.scanOne()
 	}
 }
-
-func (s *Scanner) isAtEnd() bool {
-	return s.current >= s.size
-}
-
-func (s *scanner) forward() {
-	s.current++
-}
-
 func (s *scanner) scanOne() {
-	switch c := source[current]; c {
+	switch c := s.peekAndForward(); c {
 
 	// Single char lexemes.
 	case "(":
@@ -73,6 +63,9 @@ func (s *scanner) scanOne() {
 	case "*":
 		addToken(STAR, c)
 		break
+	case "#":
+		addToken(HASH, c)
+		break
 
 	// May or may not be single char lexemes.
 	case "!":
@@ -104,10 +97,40 @@ func (s *scanner) scanOne() {
 		}
 		addToken(LESS, c)
 
+	case "\x00":
+		addToken(EOF, c)
+		break
 	default:
 		fmt.Println("Unexpected char")
 		break
 	}
+}
+
+// isAtEnd checks if the offset has reached
+// the end of file string.
+func (s *Scanner) isAtEnd() bool {
+	return s.current >= s.size
+}
+
+// peekAndForward returns the next unconsumed char
+// then increments the offset by one.
+func (s *scanner) peekAndForward() rune {
+	if s.isAtEnd() {
+		return '\x00'
+	}
+	c := s.source[s.current]
+	s.current++
+
+	return c
+}
+
+// peek returns the next unconsumed char.
+// It does not increment the offset. Just peeks.
+func (s *scanner) peek() rune {
+	if s.isAtEnd() {
+		return "\x00"
+	}
+	return s.source[s.current]
 }
 
 func (s *scanner) constructLex() string {
@@ -115,22 +138,23 @@ func (s *scanner) constructLex() string {
 
 }
 
-func (s *scanner) lookNext() (rune, bool) {
-	if s.current >= s.size - 1 {
-		return "", false
-	}
-	s.current++
-	return s.source[s.current]
-}
-
+// doesMatchNext peeks at the next unconsumed
+// char in source, checkes if it equals with
+// expected char. It only increments offset by one
+// if the check is true.
 func doesMatchNext(expected rune) bool {
-	c, ok := lookNext()
-	if !ok {
+	if s.isAtEnd() {
 		return false
-	}	
-	return c == expected
+	}
+	if c := s.peek(); c != expected {
+		return false
+	}
+
+	s.current++
+	return true
 }
 
+// addToken creates the new token and adds to the slice.
 func (s *scanner) addToken(tokenType TokenType, c string) {
 	token := NewToken(tokenType, c, s.line, nil)
 
