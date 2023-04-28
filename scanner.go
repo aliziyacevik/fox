@@ -1,8 +1,6 @@
 package main
 
-import (
-	"fmt"
-)
+//import "fmt"
 
 type Scanner interface {
 	Scan() Tokens
@@ -12,19 +10,25 @@ type scanner struct {
 	source string
 	tokens Tokens
 
-	size    int
-	start   int
-	current int
-	line    int
+	size       int
+	start      int
+	current    int
+	line       int
+	lineOffset int
+
+	reporter Reporter
 }
 
-func NewScanner(source string) Scanner {
+func NewScanner(source string, r Reporter) Scanner {
 	return &scanner{
-		source: source,
+		source:   source,
+		size:     len(source),
+		reporter: r,
 	}
 }
 
 func (s *scanner) Scan() Tokens {
+	s.lineOffset = -1
 	for !s.isAtEnd() {
 		s.scanOne()
 	}
@@ -33,8 +37,8 @@ func (s *scanner) Scan() Tokens {
 }
 
 func (s *scanner) scanOne() {
+	s.lineOffset++
 	switch c := s.peekAndForward(); c {
-
 	// Single char lexemes.
 	case '(':
 		s.addToken(LEFT_PAREN, string(c))
@@ -69,7 +73,8 @@ func (s *scanner) scanOne() {
 	// # is used for commenting. In below, we're just basically skipping every character
 	// until the end of current line.
 	case '#':
-		for c := s.peekAndForward(); c != '\n' || !s.isAtEnd(); {
+		for c := s.peek(); c != '\n' && !s.isAtEnd(); {
+			c = s.peekAndForward()
 		}
 		break
 
@@ -111,15 +116,17 @@ func (s *scanner) scanOne() {
 		break
 	case '\n':
 		s.line++
+		s.lineOffset = -1
 		break
 
 	case '\x00':
 		s.addToken(EOF, string(c))
 		break
 	default:
-		fmt.Println("Unexpected char at line: ", s.line)
+		s.reporter.ReportStream("Unexpected char (%c) at [ line:offset ]: [ %d:%d ]", c, s.line, s.lineOffset)
 		break
 	}
+
 }
 
 // isAtEnd checks if the offset has reached
@@ -137,7 +144,7 @@ func (s *scanner) peekAndForward() rune {
 	temp := s.current
 	s.current++
 
-	return rune(s.source[temp]) 
+	return rune(s.source[temp])
 }
 
 // peek returns the next unconsumed char.

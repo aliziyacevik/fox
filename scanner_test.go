@@ -6,12 +6,20 @@ import (
 )
 
 func TestScan(t *testing.T) {
-	t.Run("source", func(t *testing.T) {
-		source := `# hi there this is valid`
+	t.Run("source control", func(t *testing.T) {
+		source := `#selamlar
 
-		s := NewScanner(source)
+
+		+ - +
+		/
+		=
+		`
+
+		r := NewReporter()
+		s := NewScanner(source, r)
 		tkns := s.Scan()
 		fmt.Println(tkns)
+		r.Error()
 	})
 
 }

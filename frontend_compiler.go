@@ -20,18 +20,18 @@ func NewFrontendCompiler(s Scanner, p Parser, r Reporter) FrontendCompiler {
 	}
 }
 
-func NewFrontendCompilerBySource(source string) FrontendCompiler{
-	s := NewScanner(source)
-	p := NewParser()
-	r := NewReporter()
+func NewFrontendCompilerBySource(source string) FrontendCompiler {
+	reporter := NewReporter()
+	scanner := NewScanner(source, reporter)
+	parser := NewParser()
 
 	return &frontendCompiler{
-		scanner:  s,
-		parser:   p,
-		reporter: r,
+		scanner:  scanner,
+		parser:   parser,
+		reporter: reporter,
 	}
 }
 
-func (f *frontendCompiler) Run() {}
-func (f *frontendCompiler) Scan() Tokens {return nil}
-func (f *frontendCompiler) Parse(){}
+func (f *frontendCompiler) Run()         {}
+func (f *frontendCompiler) Scan() Tokens { return nil }
+func (f *frontendCompiler) Parse()       {}
