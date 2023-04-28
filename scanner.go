@@ -28,7 +28,8 @@ func NewScanner(source string, r *Reporter) Scanner {
 }
 
 func (s *scanner) Scan() Tokens {
-	s.lineOffset = -1
+	s.lineOffset = 0 
+	s.line = 1
 	for !s.isAtEnd() {
 		s.scanOne()
 	}
@@ -38,7 +39,7 @@ func (s *scanner) Scan() Tokens {
 
 func (s *scanner) scanOne() {
 	switch c := s.peekAndForward(); c {
-	// Single char lexemes.
+	// Single char lexemes. NOTE: there is a reason for using s.lineOffset++ in each case 
 	case '(':
 		s.addToken(LEFT_PAREN, string(c))
 		s.lineOffset++; break;
@@ -72,40 +73,43 @@ func (s *scanner) scanOne() {
 	// # is used for commenting. In below, we're just basically skipping every character
 	// until the end of current line.
 	case '#':
-		for c := s.peek(); c != '\n' && !s.isAtEnd(); {
-			c = s.peekAndForward()
-		}
-		s.lineOffset++; break;
+		c := s.peek()
+		for c != '\n' && !s.isAtEnd() {c = s.peekAndForward()}
+		if c == '\n' {s.line++}
+		break;
+
 
 	// May or may not be single char lexemes.
 	case '!':
 		if yes := s.doesMatchNext('='); yes {
 			s.addToken(BANG_EQUAL, s.constructLex())
-			s.lineOffset++; break;
+		} else {
+			s.addToken(BANG, string(c))
 		}
-		s.addToken(BANG, string(c))
 		s.lineOffset++; break;
 	case '=':
 		if yes := s.doesMatchNext('='); yes {
 			s.addToken(EQUAL_EQUAL, s.constructLex())
-			s.lineOffset++; break;
+		} else {
+			s.addToken(EQUAL, string(c))
 		}
-		s.addToken(EQUAL, string(c))
 		s.lineOffset++; break;
 
 	case '>':
 		if yes := s.doesMatchNext('='); yes {
 			s.addToken(GREATER_EQUAL, s.constructLex())
-			s.lineOffset++; break;
+		} else {
+			s.addToken(GREATER, string(c))
 		}
-		s.addToken(GREATER, string(c))
+		s.lineOffset++; break;
 
 	case '<':
 		if yes := s.doesMatchNext('='); yes {
 			s.addToken(LESS_EQUAL, s.constructLex())
-			s.lineOffset++; break;
+		} else {
+			s.addToken(LESS, string(c))
 		}
-		s.addToken(LESS, string(c))
+		s.lineOffset++; break;
 
 	case ' ':
 		s.lineOffset++; break;
@@ -114,16 +118,15 @@ func (s *scanner) scanOne() {
 	case '\r':
 		s.lineOffset++; break;
 	case '\n':
-		s.line++; s.lineOffset = -1; break;
+		s.line++; s.lineOffset = 0; break;
 		
 	case '\x00':
 		s.addToken(EOF, string(c))
 		s.lineOffset++; break;
 	default:
-		s.reporter.ReportStream("Unexpected char (%c) at [ line:offset ]: [ %d:%d ]", c, s.line, s.lineOffset)
+		s.reporter.ReportInfoStream(s.line, s.lineOffset, "Unexpected char (%c)", c)
 		s.lineOffset++; break;
 	}
-
 }
 
 // isAtEnd checks if the offset has reached

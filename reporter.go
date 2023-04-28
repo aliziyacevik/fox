@@ -4,18 +4,22 @@ import "fmt"
 
 type Err struct {
 	info string
+	line int
+	offset int
 }
 
-func NewError(info string) *Err {
+func NewError(info string, line int, offset int) *Err {
 	return &Err{
 		info: info,
+		line: line,
+		offset: offset,
 	}
 }
 
 type Errs []*Err
 
 func (e *Err) Error() string {
-	return fmt.Sprintf("Error: %s", e.info)
+	return fmt.Sprintf("Error: %s at: [ offset:line ] [ %d:%d ]", e.info, e.line, e.offset)
 }
 
 type Reporter struct {
@@ -26,15 +30,16 @@ func (r *Reporter) Report(err *Err) {
 	r.errs = append(r.errs, err)
 }
 
-func (r *Reporter) ReportInfo(info string) {
-	er := NewError(info)
+func (r *Reporter) ReportInfo(info string, line, offset int) {
+	er := NewError(info, line, offset)
 
 	r.Report(er)
 }
 
-func (r *Reporter) ReportStream(info string, stream ...interface{}) {
-	infoFormatted := fmt.Sprintf(info, stream...)
-	er := NewError(infoFormatted)
+
+func (r *Reporter) ReportInfoStream(line, offset int, info string, args ...interface{}) {
+	formattedInfo := fmt.Sprintf(info, args...)
+	er := NewError(formattedInfo, line, offset)
 	
 	r.Report(er)
 }

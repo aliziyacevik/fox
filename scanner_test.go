@@ -74,7 +74,7 @@ func TestScan(t *testing.T) {
 
 		s := NewScanner(source, r)
 		tkns := s.Scan()
-		r.Error()
+		
 		assert.Equal(t, 2, r.CountErrors())
 		assert.Equal(t, 2, len(tkns))	
 	
@@ -92,4 +92,63 @@ func TestScan(t *testing.T) {
 		assert.Equal(t, 1, r.CountErrors())
 		assert.Equal(t, 3, len(tkns))	
 	})
+
+	testcases := []struct{
+		description   string
+		source string
+		errorCount int
+		line int
+		offset int
+
+	} {
+		{
+			description: "error at first line and offset is zero",
+			source: `v >= < + =`,
+			errorCount: 1,
+			line: 1,
+			offset: 0,	
+		},
+
+		{
+			description: "error at first line and offset is two",
+			source : `><v <`,
+			errorCount: 1,
+			line: 1,
+			offset: 2,
+
+		},
+
+		{
+			description: "error at second line and offset is one",
+			source: "<=>\nX",
+			errorCount: 1,	
+			line: 2,
+			offset: 0,
+
+		},
+		{
+			description: "error at second line and offset is one",
+			source: "# comment line \n\n >X",
+			errorCount: 1,	
+			line: 3,
+			offset: 2,
+
+		},
+	}
+
+	
+	for _, tc := range testcases {
+		t.Run(tc.description, func (t *testing.T) {
+			r := NewReporter()
+			s := NewScanner(tc.source, r)
+			s.Scan()		
+
+			r.Error()
+				
+			assert.Equal(t, tc.errorCount,  r.CountErrors())
+			assert.Equal(t, tc.line, r.errs[0].line, "line")
+			assert.Equal(t, tc.offset, r.errs[0].offset, "offset")
+		})
+	}
+
 }
