@@ -16,10 +16,10 @@ type scanner struct {
 	line       int
 	lineOffset int
 
-	reporter Reporter
+	reporter *Reporter
 }
 
-func NewScanner(source string, r Reporter) Scanner {
+func NewScanner(source string, r *Reporter) Scanner {
 	return &scanner{
 		source:   source,
 		size:     len(source),
@@ -37,94 +37,91 @@ func (s *scanner) Scan() Tokens {
 }
 
 func (s *scanner) scanOne() {
-	s.lineOffset++
 	switch c := s.peekAndForward(); c {
 	// Single char lexemes.
 	case '(':
 		s.addToken(LEFT_PAREN, string(c))
-		break
+		s.lineOffset++; break;
 	case ')':
 		s.addToken(RIGHT_PAREN, string(c))
-		break
+		s.lineOffset++; break;
 	case '{':
 		s.addToken(LEFT_BRACE, string(c))
-		break
+		s.lineOffset++; break;
 	case '}':
 		s.addToken(RIGHT_BRACE, string(c))
-		break
+		s.lineOffset++; break;
 	case ',':
 		s.addToken(COMMA, string(c))
-		break
+		s.lineOffset++; break;
 	case '.':
 		s.addToken(DOT, string(c))
-		break
+		s.lineOffset++; break;
 	case '-':
 		s.addToken(MINUS, string(c))
-		break
+		s.lineOffset++; break;
 	case '+':
 		s.addToken(PLUS, string(c))
-		break
+		s.lineOffset++; break;
 	case ';':
 		s.addToken(SEMICOLON, string(c))
-		break
+		s.lineOffset++; break;
 	case '*':
 		s.addToken(STAR, string(c))
-		break
+		s.lineOffset++; break;
 	// # is used for commenting. In below, we're just basically skipping every character
 	// until the end of current line.
 	case '#':
 		for c := s.peek(); c != '\n' && !s.isAtEnd(); {
 			c = s.peekAndForward()
 		}
-		break
+		s.lineOffset++; break;
 
 	// May or may not be single char lexemes.
 	case '!':
 		if yes := s.doesMatchNext('='); yes {
 			s.addToken(BANG_EQUAL, s.constructLex())
-			break
+			s.lineOffset++; break;
 		}
 		s.addToken(BANG, string(c))
-		break
+		s.lineOffset++; break;
 	case '=':
 		if yes := s.doesMatchNext('='); yes {
 			s.addToken(EQUAL_EQUAL, s.constructLex())
-			break
+			s.lineOffset++; break;
 		}
 		s.addToken(EQUAL, string(c))
-		break
+		s.lineOffset++; break;
 
 	case '>':
 		if yes := s.doesMatchNext('='); yes {
 			s.addToken(GREATER_EQUAL, s.constructLex())
-			break
+			s.lineOffset++; break;
 		}
 		s.addToken(GREATER, string(c))
 
 	case '<':
 		if yes := s.doesMatchNext('='); yes {
 			s.addToken(LESS_EQUAL, s.constructLex())
-			break
+			s.lineOffset++; break;
 		}
 		s.addToken(LESS, string(c))
 
 	case ' ':
-		break
+		s.lineOffset++; break;
 	case '\t':
-		break
+		s.lineOffset++; break;
 	case '\r':
-		break
+		s.lineOffset++; break;
 	case '\n':
-		s.line++
-		s.lineOffset = -1
-		break
-
+		s.line++; s.lineOffset = -1; break;
+		
 	case '\x00':
 		s.addToken(EOF, string(c))
-		break
+		s.lineOffset++; break;
 	default:
 		s.reporter.ReportStream("Unexpected char (%c) at [ line:offset ]: [ %d:%d ]", c, s.line, s.lineOffset)
-		break
+		s.lineOffset++; break;
 	}
 
 }
@@ -157,6 +154,9 @@ func (s *scanner) peek() rune {
 }
 
 func (s *scanner) constructLex() string {
+	if (s.isAtEnd()) {
+		return s.source[s.start:]
+	}
 	return s.source[s.start : s.current+1]
 
 }

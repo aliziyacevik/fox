@@ -18,35 +18,32 @@ func (e *Err) Error() string {
 	return fmt.Sprintf("Error: %s", e.info)
 }
 
-type Reporter interface {
-	Report(*Err)
-	ReportInfo(info string)
-	ReportStream(info string, stream ...interface{})
-	Error()
-}
-
-type reporter struct {
+type Reporter struct {
 	errs Errs
 }
 
-func (r *reporter) Report(err *Err) {
+func (r *Reporter) Report(err *Err) {
 	r.errs = append(r.errs, err)
 }
 
-func (r *reporter) ReportInfo(info string) {
+func (r *Reporter) ReportInfo(info string) {
 	er := NewError(info)
 
 	r.Report(er)
 }
 
-func (r *reporter) ReportStream(info string, stream ...interface{}) {
+func (r *Reporter) ReportStream(info string, stream ...interface{}) {
 	infoFormatted := fmt.Sprintf(info, stream...)
 	er := NewError(infoFormatted)
 	
 	r.Report(er)
 }
 
-func (r *reporter) Error() {
+func (r *Reporter) CountErrors() int{
+	return len(r.errs)
+}
+
+func (r *Reporter) Error() {
 	if len(r.errs) == 0 {
 		fmt.Println("There are no errors")
 		return
@@ -57,6 +54,6 @@ func (r *reporter) Error() {
 	}
 }
 
-func NewReporter() Reporter {
-	return &reporter{}
+func NewReporter() *Reporter {
+	return &Reporter{}
 }
