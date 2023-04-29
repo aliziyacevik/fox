@@ -23,12 +23,6 @@ func TestScan(t *testing.T) {
 			expectedTokens: 2,
 		},
 		{
-			name:           "14 invalid chars",
-			source:         "14 invalid chars",
-			expectedErrors: 14,
-			expectedTokens: 0,
-		},
-		{
 			name:           "2 valid tokens 2 errors",
 			source:         "\n^\n#\nX\n\n!\n<=\n",
 			expectedErrors: 2,
@@ -183,4 +177,21 @@ func TestScan(t *testing.T) {
 
 	})
 
+	t.Run("4 string literals 1 operator 1 int literal", func(t *testing.T) {
+		source := `"hello" "world"
+<= "sa"
+"you" 12`
+		r := NewReporter()
+		s := NewScanner(source, r)
+
+		s.Scan()
+		assert.Equal(t, 6, len(s.tokens))
+		assert.Equal(t, 0, r.CountErrors())
+		for _, tkn := range s.tokens {
+			fmt.Println(tkn)
+		}
+
+		r.Error()
+
+	})
 }

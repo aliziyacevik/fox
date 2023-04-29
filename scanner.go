@@ -91,10 +91,7 @@ func (s *scanner) scanOne() {
 	case '"':
 		s.scanStringLiteral()
 		break
-	case ' ':
-		break
-	case '\t':
-	case '\r':
+	case ' ', '\t', '\r':
 		break
 	case '\n':
 		s.line++
@@ -103,6 +100,11 @@ func (s *scanner) scanOne() {
 
 	case '\x00':
 		s.scanSingle(EOF)
+		break
+
+		// ...
+	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+		s.scanNumberLiteral()
 		break
 
 	default:
@@ -215,4 +217,79 @@ func (s *scanner) scanStringLiteral() {
 	s.forward()
 	value := s.constructLex(start)
 	s.addToken(STRING, value)
+}
+
+// scanNumberLiteral scans a numeric literal from the input source
+func (s *scanner) scanNumberLiteral() {
+	start := s.prev
+	for isDigit(s.peek()) {
+		s.forward()
+	}
+
+	// Check for a decimal point
+	if s.peek() == '.' && isDigit(s.peekAndForward()) {
+		// Consume digits after the decimal point
+		for isDigit(s.peek()) {
+			s.forward()
+		}
+	}
+
+	value := s.constructLex(start)
+	s.addToken(NUMBER, value)
+}
+
+// scanIdentifier scans an identifier from the input source
+func (s *scanner) scanIdentifier() {
+	start := s.prev
+	for isAlphaNumeric(s.peek()) {
+		s.forward()
+	}
+
+	value := s.constructLex(start)
+	tokenType := IDENTIFIER
+	if keywordType, isKeyword := lookupKeyword(value); isKeyword {
+		tokenType = keywordType
+	}
+	s.addToken(tokenType, value)
+}
+
+// isAlpha checks if a rune is an alphabetic character (A-Z, a-z) or an underscore
+func isAlpha(c rune) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'
+}
+
+// isAlphaNumeric checks if a rune is alphanumeric (an alphabetic character or a digit)
+func isAlphaNumeric(c rune) bool {
+	return isAlpha(c) || isDigit(c)
+}
+
+// lookupKeyword checks if a string is a keyword and returns its TokenType
+func lookupKeyword(s string) (TokenType, bool) {
+	keywords := map[string]TokenType{
+		"AND":    AND,
+		"CLASS":  CLASS,
+		"IF":     IF,
+		"ELSE":   ELSE,
+		"TRUE":   TRUE, // AdIFd: IF,
+		"FALSE":  FALSE,
+		"FUN":    FUN,
+		"FOR":    FOR,
+		"NIL":    NIL,
+		"OR":     OR,
+		"PRINT":  PRINT,
+		"RETURN": RETURN,
+		"SUPER":  SUPER,
+		"THIS":   THIS,
+		"VAR":    VAR,
+
+		"EOF": EOF,
+	}
+
+	tokenType, ok := keywords[s]
+	return tokenType, ok
+}
+
+// isDigit checks if a rune is a digit (0-9)
+func isDigit(c rune) bool {
+	return c >= '0' && c <= '9'
 }
