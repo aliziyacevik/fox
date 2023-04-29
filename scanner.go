@@ -94,7 +94,6 @@ func (s *scanner) scanOne() {
 	case ' ':
 		break
 	case '\t':
-		break
 	case '\r':
 		break
 	case '\n':
@@ -104,12 +103,10 @@ func (s *scanner) scanOne() {
 
 	case '\x00':
 		s.scanSingle(EOF)
-		s.lineOffset++
 		break
 
 	default:
 		s.reporter.ReportInfoStream(s.line, s.lineOffset, "Unexpected char (%c)", c)
-		s.lineOffset++
 		break
 	}
 }
@@ -134,11 +131,9 @@ func (s *scanner) peekAndForward() rune {
 		return '\x00'
 	}
 
-	s.prev = s.current
-	s.current++
-	s.lineOffset++
-
-	return rune(s.source[s.prev])
+	temp := s.current
+	s.forward()
+	return rune(s.source[temp])
 }
 
 func (s *scanner) forward() {
@@ -179,9 +174,7 @@ func (s *scanner) doesMatchNextForward(expected rune) bool {
 		return false
 	}
 
-	s.current++
-	s.lineOffset++
-	s.prev++
+	s.forward()
 	return true
 }
 
