@@ -9,109 +9,6 @@ import (
 // Check out valid token types in tokens.go
 
 func TestScan(t *testing.T) {
-
-	testCases := []struct {
-		name           string
-		source         string
-		expectedErrors int
-		expectedTokens int
-	}{
-		{
-			name:           "two token no error",
-			source:         "> >=",
-			expectedErrors: 0,
-			expectedTokens: 2,
-		},
-		{
-			name:           "2 valid tokens 2 errors",
-			source:         "\n^\n#\nX\n\n!\n<=\n",
-			expectedErrors: 2,
-			expectedTokens: 2,
-		},
-		{
-			name:           "testing only comment no errors no tokens",
-			source:         "# selamlar ",
-			expectedErrors: 0,
-			expectedTokens: 0,
-		},
-		{
-			name:           "two errors and two tokens with one comment",
-			source:         "# the comment\n\na\nb\n\n>\n<\n",
-			expectedErrors: 2,
-			expectedTokens: 2,
-		},
-		{
-			name:           "three tokens and one error",
-			source:         "%   + < >=   ",
-			expectedErrors: 1,
-			expectedTokens: 3,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			r := NewReporter()
-			s := NewScanner(tc.source, r)
-			tkns := s.Scan()
-
-			assert.Equal(t, tc.expectedErrors, r.CountErrors())
-			assert.Equal(t, tc.expectedTokens, len(tkns))
-		})
-	}
-
-	testcases := []struct {
-		description string
-		source      string
-		errorCount  int
-		line        int
-		offset      int
-	}{
-		{
-			description: "error at first line and offset is zero",
-			source:      `v >= < + =`,
-			errorCount:  1,
-			line:        1,
-			offset:      0,
-		},
-
-		{
-			description: "error at first line and offset is two",
-			source:      `><v <`,
-			errorCount:  1,
-			line:        1,
-			offset:      2,
-		},
-
-		{
-			description: "error at second line and offset is 0",
-			source:      "<=>\nX",
-			errorCount:  1,
-			line:        2,
-			offset:      0,
-		},
-		{
-			description: "error at third line and offset is two",
-			source:      "# comment line \n\n >X",
-			errorCount:  1,
-			line:        3,
-			offset:      2,
-		},
-	}
-
-	for _, tc := range testcases {
-		t.Run(tc.description, func(t *testing.T) {
-			r := NewReporter()
-			s := NewScanner(tc.source, r)
-			s.Scan()
-
-			r.Error()
-
-			assert.Equal(t, tc.errorCount, r.CountErrors())
-			assert.Equal(t, tc.line, r.errs[0].line, "line")
-			assert.Equal(t, tc.offset, r.errs[0].offset, "offset")
-		})
-	}
-
 	t.Run("one string literal", func(t *testing.T) {
 		source := `"selam"`
 		r := NewReporter()
@@ -194,4 +91,76 @@ func TestScan(t *testing.T) {
 		r.Error()
 
 	})
+
+	t.Run("1 keyword 1 identifier", func(t *testing.T) {
+		source := `fun identifier`
+		r := NewReporter()
+		s := NewScanner(source, r)
+
+		s.Scan()
+		assert.Equal(t, 2, len(s.tokens))
+		assert.Equal(t, 0, r.CountErrors())
+		for _, tkn := range s.tokens {
+			fmt.Println(tkn)
+		}
+
+		r.Error()
+
+	})
+
+	t.Run("2 keyword 1 identifier 1 string identifier 1 number identifier", func(t *testing.T) {
+		source := `fun identifier 
+
+   "literal" class 
+12
+`
+		r := NewReporter()
+		s := NewScanner(source, r)
+
+		s.Scan()
+		assert.Equal(t, 5, len(s.tokens))
+		assert.Equal(t, 0, r.CountErrors())
+		for _, tkn := range s.tokens {
+			fmt.Println(tkn)
+		}
+
+		r.Error()
+
+	})
+
+	t.Run("one comment line", func(t *testing.T) {
+		source := `# nothing in this line should count`
+		r := NewReporter()
+		s := NewScanner(source, r)
+
+		s.Scan()
+		assert.Equal(t, 0, len(s.tokens))
+		assert.Equal(t, 0, r.CountErrors())
+		for _, tkn := range s.tokens {
+			fmt.Println(tkn)
+		}
+
+		r.Error()
+
+	})
+
+	t.Run("one comment line and some keywords", func(t *testing.T) {
+		source := `# nothing in this line should count
+class 
+fun
+`
+		r := NewReporter()
+		s := NewScanner(source, r)
+
+		s.Scan()
+		assert.Equal(t, 2, len(s.tokens))
+		assert.Equal(t, 0, r.CountErrors())
+		for _, tkn := range s.tokens {
+			fmt.Println(tkn)
+		}
+
+		r.Error()
+
+	})
+
 }

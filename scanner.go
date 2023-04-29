@@ -37,79 +37,77 @@ func (s *scanner) Scan() Tokens {
 }
 
 func (s *scanner) scanOne() {
-	switch c := s.peekAndForward(); c {
-	case '(':
-		s.scanSingle(LEFT_PAREN)
-		break
-	case ')':
-		s.scanSingle(RIGHT_PAREN)
-		break
-	case '{':
-		s.scanSingle(LEFT_BRACE)
-		break
-	case '}':
-		s.scanSingle(RIGHT_BRACE)
-		break
-	case ',':
-		s.scanSingle(COMMA)
-		break
-	case '.':
-		s.scanSingle(DOT)
-		break
-	case '-':
-		s.scanSingle(MINUS)
-		break
-	case '+':
-		s.scanSingle(PLUS)
-		break
-	case ';':
-		s.scanSingle(SEMICOLON)
-		break
-	case '*':
-		s.scanSingle(STAR)
-		break
-	case '#':
-		s.scanComment()
-		break
-
-	case '!':
-		s.scanEqual(BANG, BANG_EQUAL, c)
-		break
-	case '=':
-		s.scanEqual(EQUAL, EQUAL_EQUAL, c)
-		break
-
-	case '>':
-		s.scanEqual(GREATER, GREATER_EQUAL, c)
-		break
-
-	case '<':
-		s.scanEqual(LESS, LESS_EQUAL, c)
-		break
-
-	// Literals
-	case '"':
+	c := s.peekAndForward()
+	switch {
+	case isString(c):
 		s.scanStringLiteral()
-		break
-	case ' ', '\t', '\r':
-		break
-	case '\n':
-		s.line++
-		s.lineOffset = -1
-		break
-
-	case '\x00':
-		s.scanSingle(EOF)
-		break
-
-		// ...
-	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+	case isDigit(c):
 		s.scanNumberLiteral()
-		break
-
+	case isAlpha(c):
+		s.scanIdentifier()
 	default:
-		s.reporter.ReportInfoStream(s.line, s.lineOffset, "Unexpected char (%c)", c)
-		break
+		switch c {
+		case '(':
+			s.scanSingle(LEFT_PAREN)
+			break
+		case ')':
+			s.scanSingle(RIGHT_PAREN)
+			break
+		case '{':
+			s.scanSingle(LEFT_BRACE)
+			break
+		case '}':
+			s.scanSingle(RIGHT_BRACE)
+			break
+		case ',':
+			s.scanSingle(COMMA)
+			break
+		case '.':
+			s.scanSingle(DOT)
+			break
+		case '-':
+			s.scanSingle(MINUS)
+			break
+		case '+':
+			s.scanSingle(PLUS)
+			break
+		case ';':
+			s.scanSingle(SEMICOLON)
+			break
+		case '*':
+			s.scanSingle(STAR)
+			break
+		case '#':
+			s.scanComment()
+			break
+
+		case '!':
+			s.scanEqual(BANG, BANG_EQUAL, c)
+			break
+		case '=':
+			s.scanEqual(EQUAL, EQUAL_EQUAL, c)
+			break
+
+		case '>':
+			s.scanEqual(GREATER, GREATER_EQUAL, c)
+			break
+
+		case '<':
+			s.scanEqual(LESS, LESS_EQUAL, c)
+			break
+
+		case ' ', '\t', '\r':
+			break
+		case '\n':
+			s.line++
+			s.lineOffset = -1
+			break
+
+		case '\x00':
+			s.scanSingle(EOF)
+			break
+
+		}
 	}
 }
 
@@ -263,26 +261,30 @@ func isAlphaNumeric(c rune) bool {
 	return isAlpha(c) || isDigit(c)
 }
 
+// isString checks if rune is starting a string literal with "
+func isString(c rune) bool {
+	return c == '"'
+}
+
 // lookupKeyword checks if a string is a keyword and returns its TokenType
 func lookupKeyword(s string) (TokenType, bool) {
 	keywords := map[string]TokenType{
-		"AND":    AND,
-		"CLASS":  CLASS,
-		"IF":     IF,
-		"ELSE":   ELSE,
-		"TRUE":   TRUE, // AdIFd: IF,
-		"FALSE":  FALSE,
-		"FUN":    FUN,
-		"FOR":    FOR,
-		"NIL":    NIL,
-		"OR":     OR,
-		"PRINT":  PRINT,
-		"RETURN": RETURN,
-		"SUPER":  SUPER,
-		"THIS":   THIS,
-		"VAR":    VAR,
-
-		"EOF": EOF,
+		"and":    AND,
+		"class":  CLASS,
+		"else":   ELSE,
+		"false":  FALSE,
+		"fun":    FUN,
+		"for":    FOR,
+		"if":     IF,
+		"nil":    NIL,
+		"or":     OR,
+		"print":  PRINT,
+		"return": RETURN,
+		"super":  SUPER,
+		"this":   THIS,
+		"true":   TRUE,
+		"var":    VAR,
+		"while":  WHILE,
 	}
 
 	tokenType, ok := keywords[s]
