@@ -1,7 +1,7 @@
 /* to be documented */
 package main
 
-type TokenType int
+type TokenType uint
 
 const (
 	// Single char token types.

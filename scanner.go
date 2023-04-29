@@ -2,10 +2,6 @@ package main
 
 //import "fmt"
 
-type Scanner interface {
-	Scan() Tokens
-}
-
 type scanner struct {
 	source string
 	tokens Tokens
@@ -19,7 +15,7 @@ type scanner struct {
 	reporter *Reporter
 }
 
-func NewScanner(source string, r *Reporter) Scanner {
+func NewScanner(source string, r *Reporter) *scanner {
 	return &scanner{
 		source:   source,
 		size:     len(source),
@@ -28,7 +24,7 @@ func NewScanner(source string, r *Reporter) Scanner {
 }
 
 func (s *scanner) Scan() Tokens {
-	s.lineOffset = 0 
+	s.lineOffset = -1
 	s.line = 1
 	for !s.isAtEnd() {
 		s.scanOne()
@@ -39,93 +35,89 @@ func (s *scanner) Scan() Tokens {
 
 func (s *scanner) scanOne() {
 	switch c := s.peekAndForward(); c {
-	// Single char lexemes. NOTE: there is a reason for using s.lineOffset++ in each case 
+	// Single char lexemes. NOTE: there is a reason for using s.lineOffset++ in each case
 	case '(':
 		s.addToken(LEFT_PAREN, string(c))
-		s.lineOffset++; break;
+		break
 	case ')':
 		s.addToken(RIGHT_PAREN, string(c))
-		s.lineOffset++; break;
+		break
 	case '{':
 		s.addToken(LEFT_BRACE, string(c))
-		s.lineOffset++; break;
+		break
 	case '}':
 		s.addToken(RIGHT_BRACE, string(c))
-		s.lineOffset++; break;
+		break
 	case ',':
 		s.addToken(COMMA, string(c))
-		s.lineOffset++; break;
+		break
 	case '.':
 		s.addToken(DOT, string(c))
-		s.lineOffset++; break;
+		break
 	case '-':
 		s.addToken(MINUS, string(c))
-		s.lineOffset++; break;
+		break
 	case '+':
 		s.addToken(PLUS, string(c))
-		s.lineOffset++; break;
+		break
 	case ';':
 		s.addToken(SEMICOLON, string(c))
-		s.lineOffset++; break;
+		break
 	case '*':
 		s.addToken(STAR, string(c))
-		s.lineOffset++; break;
+		break
 	// # is used for commenting. In below, we're just basically skipping every character
 	// until the end of current line.
 	case '#':
 		c := s.peek()
-		for c != '\n' && !s.isAtEnd() {c = s.peekAndForward()}
-		if c == '\n' {s.line++}
-		break;
-
+		for c != '\n' && !s.isAtEnd() {
+			c = s.peekAndForward()
+		}
+		if c == '\n' {
+			s.line++
+		}
+		break
 
 	// May or may not be single char lexemes.
 	case '!':
-		if yes := s.doesMatchNext('='); yes {
-			s.addToken(BANG_EQUAL, s.constructLex())
-		} else {
-			s.addToken(BANG, string(c))
-		}
-		s.lineOffset++; break;
+		s.scanEqual(BANG, BANG_EQUAL, c)
+		break
 	case '=':
-		if yes := s.doesMatchNext('='); yes {
-			s.addToken(EQUAL_EQUAL, s.constructLex())
-		} else {
-			s.addToken(EQUAL, string(c))
-		}
-		s.lineOffset++; break;
+		s.scanEqual(EQUAL, EQUAL_EQUAL, c)
+		break
 
 	case '>':
-		if yes := s.doesMatchNext('='); yes {
-			s.addToken(GREATER_EQUAL, s.constructLex())
-		} else {
-			s.addToken(GREATER, string(c))
-		}
-		s.lineOffset++; break;
+		s.scanEqual(GREATER, GREATER_EQUAL, c)
+		break
 
 	case '<':
-		if yes := s.doesMatchNext('='); yes {
-			s.addToken(LESS_EQUAL, s.constructLex())
-		} else {
-			s.addToken(LESS, string(c))
-		}
-		s.lineOffset++; break;
+		s.scanEqual(LESS, LESS_EQUAL, c)
+		break
 
+
+	// Literals
+	case '"':
+		s.scanStringLiteral()
+		break
 	case ' ':
-		s.lineOffset++; break;
+		break
 	case '\t':
-		s.lineOffset++; break;
+		break
 	case '\r':
-		s.lineOffset++; break;
+		break
 	case '\n':
-		s.line++; s.lineOffset = 0; break;
-		
+		s.line++
+		s.lineOffset = -1
+		break
+
 	case '\x00':
 		s.addToken(EOF, string(c))
-		s.lineOffset++; break;
+		s.lineOffset++
+		break
 	default:
 		s.reporter.ReportInfoStream(s.line, s.lineOffset, "Unexpected char (%c)", c)
-		s.lineOffset++; break;
+		s.lineOffset++
+		break
 	}
 }
 
@@ -143,8 +135,16 @@ func (s *scanner) peekAndForward() rune {
 	}
 	temp := s.current
 	s.current++
+	s.lineOffset++
 
 	return rune(s.source[temp])
+}
+
+func (s *scanner) forward() {
+	if s.isAtEnd() {return}
+
+	s.current++
+	s.lineOffset++
 }
 
 // peek returns the next unconsumed char.
@@ -156,11 +156,11 @@ func (s *scanner) peek() rune {
 	return rune(s.source[s.current])
 }
 
-func (s *scanner) constructLex() string {
-	if (s.isAtEnd()) {
-		return s.source[s.start:]
+func (s *scanner) constructLex(start int) string {
+	if s.isAtEnd() {
+		return s.source[start:]
 	}
-	return s.source[s.start : s.current+1]
+	return s.source[start : s.current+1]
 
 }
 
@@ -168,7 +168,7 @@ func (s *scanner) constructLex() string {
 // char in source, checkes if it equals with
 // expected char. It only increments offset by one
 // if the check is true.
-func (s *scanner) doesMatchNext(expected rune) bool {
+func (s *scanner) doesMatchNextForward(expected rune) bool {
 	if s.isAtEnd() {
 		return false
 	}
@@ -177,6 +177,7 @@ func (s *scanner) doesMatchNext(expected rune) bool {
 	}
 
 	s.current++
+	s.lineOffset++
 	return true
 }
 
@@ -186,3 +187,34 @@ func (s *scanner) addToken(tokenType TokenType, c string) {
 
 	s.tokens = append(s.tokens, token)
 }
+
+func (s *scanner) scanEqual(t TokenType, tt TokenType, c rune) {
+	start := s.lineOffset
+	if yes := s.doesMatchNextForward('='); yes {
+		s.addToken(tt, s.constructLex(start)) 
+	} else {
+		s.addToken(t, string(c))
+	}
+}
+
+func (s *scanner) scanStringLiteral() {
+    start := s.lineOffset
+    for s.peek() != '"' && !s.isAtEnd() {
+        if s.peek() == '\n' {
+            s.line++
+        }
+       // s.advance()
+    }
+
+    if s.isAtEnd() {
+        s.reporter.ReportInfoStream(s.line, s.lineOffset,"Unterminated string ")
+        return
+    }
+
+   // s.advance() // Consume the closing double quote.
+    value := s.source[start+1 : s.lineOffset-1]
+    s.addToken(STRING, value)
+    s.lineOffset++
+}
+
+

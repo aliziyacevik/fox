@@ -3,15 +3,15 @@ package main
 import "fmt"
 
 type Err struct {
-	info string
-	line int
+	info   string
+	line   int
 	offset int
 }
 
 func NewError(info string, line int, offset int) *Err {
 	return &Err{
-		info: info,
-		line: line,
+		info:   info,
+		line:   line,
 		offset: offset,
 	}
 }
@@ -36,15 +36,14 @@ func (r *Reporter) ReportInfo(info string, line, offset int) {
 	r.Report(er)
 }
 
-
 func (r *Reporter) ReportInfoStream(line, offset int, info string, args ...interface{}) {
 	formattedInfo := fmt.Sprintf(info, args...)
 	er := NewError(formattedInfo, line, offset)
-	
+
 	r.Report(er)
 }
 
-func (r *Reporter) CountErrors() int{
+func (r *Reporter) CountErrors() int {
 	return len(r.errs)
 }
 
