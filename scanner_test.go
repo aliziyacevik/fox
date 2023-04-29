@@ -1,99 +1,69 @@
 package main
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 // Check out valid token types in tokens.go
 
-
-
-
-
 func TestScan(t *testing.T) {
-	t.Run("two token no error", func(t *testing.T) {
-		source := `> >=`
 
-		r := NewReporter()
-		s := NewScanner(source, r)
-		tkns := s.Scan()
+	testCases := []struct {
+		name           string
+		source         string
+		expectedErrors int
+		expectedTokens int
+	}{
+		{
+			name:           "two token no error",
+			source:         "> >=",
+			expectedErrors: 0,
+			expectedTokens: 2,
+		},
+		{
+			name:           "14 invalid chars",
+			source:         "14 invalid chars",
+			expectedErrors: 14,
+			expectedTokens: 0,
+		},
+		{
+			name:           "2 valid tokens 2 errors",
+			source:         "\n^\n#\nX\n\n!\n<=\n",
+			expectedErrors: 2,
+			expectedTokens: 2,
+		},
+		{
+			name:           "testing only comment no errors no tokens",
+			source:         "# selamlar ",
+			expectedErrors: 0,
+			expectedTokens: 0,
+		},
+		{
+			name:           "two errors and two tokens with one comment",
+			source:         "# the comment\n\na\nb\n\n>\n<\n",
+			expectedErrors: 2,
+			expectedTokens: 2,
+		},
+		{
+			name:           "three tokens and one error",
+			source:         "%   + < >=   ",
+			expectedErrors: 1,
+			expectedTokens: 3,
+		},
+	}
 
-		assert.Equal(t, 0, r.CountErrors())
-		assert.Equal(t, 2, len(tkns))
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := NewReporter()
+			s := NewScanner(tc.source, r)
+			tkns := s.Scan()
 
-	})
-
-	t.Run("14 invalid chars", func(t *testing.T) {
-		source := `14 invalid chars`
-
-		r := NewReporter()
-		s := NewScanner(source, r)
-		tkns := s.Scan()
-
-		assert.Equal(t, 14, r.CountErrors())
-		assert.Equal(t, 0, len(tkns))
-	})
-
-	t.Run("2 valid tokens 2 errors", func(t *testing.T) {
-		source := `
-			^ # invalid symbol
-			X # invalid symbol
-
-			! # valid 
-			<= # valid
-		`
-
-		r := NewReporter()
-		s := NewScanner(source, r)
-		tkns := s.Scan()
-
-		assert.Equal(t, 2, r.CountErrors())
-		assert.Equal(t, 2, len(tkns))
-
-	})
-
-	t.Run("testing only comment no errors no tokens", func(t *testing.T) {
-		source := `# selamlar `
-
-		r := NewReporter()
-		s := NewScanner(source, r)
-		tkns := s.Scan()
-
-		assert.Equal(t, 0, r.CountErrors())
-		assert.Equal(t, 0, len(tkns))
-	})
-
-	t.Run("two errors and two tokens with one comment", func(t *testing.T) {
-		r := NewReporter()
-		source := `# the comment    
-
-			a
-			b
-
-
-			>
-			<
-		`
-
-		s := NewScanner(source, r)
-		tkns := s.Scan()
-
-		assert.Equal(t, 2, r.CountErrors())
-		assert.Equal(t, 2, len(tkns))
-
-	})
-
-	t.Run("three tokens and one error", func(t *testing.T) {
-		source := `%   + < >=   `
-
-		r := NewReporter()
-		s := NewScanner(source, r)
-		tkns := s.Scan()
-
-		assert.Equal(t, 1, r.CountErrors())
-		assert.Equal(t, 3, len(tkns))
-	})
+			assert.Equal(t, tc.expectedErrors, r.CountErrors())
+			assert.Equal(t, tc.expectedTokens, len(tkns))
+		})
+	}
 
 	testcases := []struct {
 		description string
@@ -147,5 +117,70 @@ func TestScan(t *testing.T) {
 			assert.Equal(t, tc.offset, r.errs[0].offset, "offset")
 		})
 	}
+
+	t.Run("one string literal", func(t *testing.T) {
+		source := `"selam"`
+		r := NewReporter()
+		s := NewScanner(source, r)
+
+		s.Scan()
+		assert.Equal(t, 1, len(s.tokens))
+		assert.Equal(t, 0, r.CountErrors())
+		for _, tkn := range s.tokens {
+			fmt.Println(tkn)
+		}
+
+		r.Error()
+	})
+
+	t.Run("two string literals", func(t *testing.T) {
+		source := `"selam" "hello world"`
+		r := NewReporter()
+		s := NewScanner(source, r)
+
+		s.Scan()
+		assert.Equal(t, 2, len(s.tokens))
+		assert.Equal(t, 0, r.CountErrors())
+		for _, tkn := range s.tokens {
+			fmt.Println(tkn)
+		}
+
+		r.Error()
+	})
+
+	t.Run("three string literals in different lines", func(t *testing.T) {
+		source := `"hello" "world"
+
+"you"`
+		r := NewReporter()
+		s := NewScanner(source, r)
+
+		s.Scan()
+		assert.Equal(t, 3, len(s.tokens))
+		assert.Equal(t, 0, r.CountErrors())
+		for _, tkn := range s.tokens {
+			fmt.Println(tkn)
+		}
+
+		r.Error()
+
+	})
+	t.Run("4 string literals one operator", func(t *testing.T) {
+		source := `"hello" "world"
+<= "sa"
+"you"`
+		r := NewReporter()
+		s := NewScanner(source, r)
+
+		s.Scan()
+		assert.Equal(t, 5, len(s.tokens))
+		assert.Equal(t, 0, r.CountErrors())
+		for _, tkn := range s.tokens {
+			fmt.Println(tkn)
+		}
+
+		r.Error()
+
+	})
 
 }
